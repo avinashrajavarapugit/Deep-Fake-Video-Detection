@@ -1,35 +1,40 @@
-# Use a base image
-FROM python:3.9
+# Use a lightweight base image with Python
+FROM python:3.9-slim
 
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Install system dependencies for dlib and other packages
+# Install necessary dependencies for dlib
 RUN apt-get update && apt-get install -y \
-    build-essential \
     cmake \
+    g++ \
     libopenblas-dev \
     liblapack-dev \
     libx11-dev \
     libgtk-3-dev \
-    libboost-python-dev \
-    libboost-thread-dev \
-    libboost-system-dev \
-    && apt-get clean
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dlib first using 
-COPY dlib-19.22.1-cp39-cp39-win_amd64.whl .
-RUN pip install ./dlib-19.22.1-cp39-cp39-win_amd64.whl
-# Copy requirements file and install Python dependencies (excluding dlib)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Clone the dlib repository
+RUN git clone https://github.com/davisking/dlib.git
 
-# Copy the rest of the application code
+# Build dlib from source
+RUN cd dlib && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    cmake --build . --config Release && \
+    cd ..
+
+# Install the Python bindings for dlib
+RUN cd dlib && python3 setup.py install
+
+# Copy project files
 COPY . .
 
-# Expose the application port
+# Expose the port
 EXPOSE 5000
 
-# Run the application
-CMD ["python", "./app.py"]
+# Run the backend service
+CMD ["python", "backend.py"]
 
