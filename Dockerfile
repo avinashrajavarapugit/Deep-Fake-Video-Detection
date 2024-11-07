@@ -17,12 +17,11 @@ RUN apt-get update && apt-get install -y \
     libboost-system-dev \
     && apt-get clean
 
-# Install dlib first using pip
-RUN pip install --no-cache-dir dlib==19.22.1
-
+# Install dlib first using 
+COPY dlib-19.22.1-cp39-cp39-win_amd64.whl .
+RUN pip install ./dlib-19.22.1-cp39-cp39-win_amd64.whl
 # Copy requirements file and install Python dependencies (excluding dlib)
 COPY requirements.txt .
-RUN sed -i '/dlib/d' requirements.txt  # Remove dlib from requirements.txt if listed
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
