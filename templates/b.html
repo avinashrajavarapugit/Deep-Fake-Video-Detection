@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            color: #4a90e2;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 350px;
+        }
+        .file-upload-container {
+            border: 2px dashed #4a90e2;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .file-upload-container:hover {
+            background-color: #f0f8ff;
+        }
+        .file-upload-container p {
+            margin: 0;
+            font-size: 16px;
+        }
+        .file-upload-container input[type="file"] {
+            display: none;
+        }
+        button {
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #357ABD;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+        #loading {
+            display: none;
+            margin-top: 10px;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4a90e2;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Deepfake Detection</h1>
+    <form id="uploadForm">
+        <label class="file-upload-container">
+            <p>Drag and drop files here</p>
+            <p>or</p>
+            <button type="button" onclick="document.getElementById('videoFile').click()">Browse files</button>
+            <input type="file" id="videoFile" name="file" accept="video/*" required>
+        </label>
+        <button type="submit">Check for Deepfake</button>
+    </form>
+    <div id="loading">
+        <div class="loader"></div>
+        <p>Processing your video...</p>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const fileField = document.getElementById('videoFile');
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+
+            // Clear previous result and show loading spinner
+            resultDiv.innerText = '';
+            loadingDiv.style.display = 'flex';
+
+            formData.append('file', fileField.files[0]);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                resultDiv.innerText = result.deepfake ? "Deepfake Video" : "Real Video";
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerText = 'Error checking deepfake';
+            } finally {
+                // Hide loading spinner
+                loadingDiv.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

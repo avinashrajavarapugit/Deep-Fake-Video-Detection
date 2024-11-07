@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+</head>
+<body>
+    <h1>Deepfake Detection</h1>
+    <form id="uploadForm">
+        <input type="file" id="videoFile" name="file" accept="video/*" required>
+        <button type="submit">Check for Deepfake</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const fileField = document.getElementById('videoFile');
+
+            formData.append('file', fileField.files[0]);
+
+            try {
+                const response = await fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                document.getElementById('result').innerText = result.deepfake ? "Deepfake Detected" : "No Deepfake Detected";
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerText = 'Error checking deepfake';
+            }
+        };
+    </script>
+</body>
+</html>
