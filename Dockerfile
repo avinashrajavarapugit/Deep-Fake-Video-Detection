@@ -6,17 +6,13 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-dev \
     build-essential \
     cmake \
-    scikit-image \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages
 RUN pip install --no-cache-dir \
-    numpy \
-    scikit-learn \
     cmake \
-    dlib \
-    face_recognition
+    dlib
     
 # Set the working directory
 WORKDIR /app
