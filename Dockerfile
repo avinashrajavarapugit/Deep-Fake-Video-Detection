@@ -12,9 +12,9 @@ RUN apt-get update && apt-get install -y \
     liblapack-dev \
     libx11-dev \
     libgtk-3-dev \
-    libboost-python1.71.0 \
-    libboost-thread1.71.0 \
-    libboost-system1.71.0 \
+    libboost-python-dev \
+    libboost-thread-dev \
+    libboost-system-dev \
     && apt-get clean
 
 # Install dlib first using pip
