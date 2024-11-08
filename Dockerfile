@@ -4,15 +4,16 @@ FROM python:3.9-slim
 RUN apt-get update && apt-get install -y \
     libboost-all-dev \
     libgtk-3-dev \
+    libx11-dev \
+    libopenblas-dev \
+    liblapack-dev \
     build-essential \
-    cmake \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    cmake 
 
 # Install Python packages
-RUN pip install --no-cache-dir \
-    cmake \
-    dlib
+RUN pip3 install cmake
+
+RUN pip3 install dlib
     
 # Set the working directory
 WORKDIR /app
