@@ -6,7 +6,7 @@ import tensorflow as tf
 import speechpy
 from scipy.io import wavfile
 import cv2
-import dlib
+import mediapipe as mp
 
 MOUTH_H = 112
 MOUTH_W = 112
@@ -42,73 +42,43 @@ def make_rect_shape_square(rect):
 
 
 def expand_rect(rect, scale, frame_shape, scale_w=1.5, scale_h=1.5):
+    x, y, x2, y2 = rect
+    w = x2 - x
+    h = y2 - y
+    new_w, new_h = int(w * scale_w), int(h * scale_h)
+    new_x = max(0, x - (new_w - w) // 2)
+    new_y = max(0, y - (new_h - h) // 2)
 
-    if scale is not None:
-        scale_w = scale
-        scale_h = scale
-    # Rect: (x, y, x+w, y+h)
-    x = rect[0]
-    y = rect[1]
-    w = rect[2] - x
-    h = rect[3] - y
-    # new_w, new_h
-    new_w = int(w * scale_w)
-    new_h = int(h * scale_h)
-    # new_x
-    new_x = int(x - (new_w - w)/2)
-    if new_x < 0:
-        new_w = new_x + new_w
-        new_x = 0
-    elif new_x + new_w > (frame_shape[1] - 1):
-        new_w = (frame_shape[1] - 1) - new_x
-    # new_y
-    new_y = int(y - (new_h - h)/2)
-    if new_y < 0:
-        new_h = new_y + new_h
-        new_y = 0
-    elif new_y + new_h > (frame_shape[0] - 1):
-        new_h = (frame_shape[0] - 1) - new_y
-    return [new_x, new_y, new_x + new_w, new_y + new_h]
+    new_x2 = min(new_x + new_w, frame_shape[1])
+    new_y2 = min(new_y + new_h, frame_shape[0])
 
-def detect_mouth_in_frame(frame, detector, predictor, prevFace, verbose):
-    ''' takes frames as input and detect face and mouth from it, then return it with proper coordinates '''
+    return [new_x, new_y, new_x2, new_y2]
 
-    # Detect all faces
-    faces = detector(frame, 1)
-
-    # If no faces are detected
-    if len(faces) == 0:
+def detect_mouth_in_frame(frame, prev_face, verbose=False):
+    # Process frame with Mediapipe
+    results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    
+    if not results.multi_face_landmarks:
         if verbose:
-            print("No faces detected, using prevFace", prevFace, "(detect_mouth_in_frame)")
-        faces = [prevFace]
+            print("No faces detected, using prevFace:", prev_face)
+        return None, prev_face
 
-    # Note first face (ASSUMING FIRST FACE IS THE REQUIRED ONE!)
-    face = faces[0]
-    # Predict facial landmarks
-    shape = predictor(frame, face)
-    # Note all mouth landmark coordinates
-    mouthCoords = np.array([[shape.part(i).x, shape.part(i).y] for i in range(48, 68)])
+    landmarks = results.multi_face_landmarks[0]
 
-    # Mouth Rect: x, y, x+w, y+h
-    mouthRect = [np.min(mouthCoords[:, 1]), np.min(mouthCoords[:, 0]),
-                 np.max(mouthCoords[:, 1]), np.max(mouthCoords[:, 0])]
+    # Get mouth landmarks
+    h, w, _ = frame.shape
+    mouth_landmarks = [(int(landmark.x * w), int(landmark.y * h)) for landmark in landmarks.landmark[61:88]]
 
-    # Make mouthRect square
-    mouthRect = make_rect_shape_square(mouthRect)
+    x_coords = [pt[0] for pt in mouth_landmarks]
+    y_coords = [pt[1] for pt in mouth_landmarks]
+    mouth_rect = [min(x_coords), min(y_coords), max(x_coords), max(y_coords)]
 
-    # Expand mouthRect square
-    expandedMouthRect = expand_rect(mouthRect, scale=(MOUTH_TO_FACE_RATIO * face.width() / mouthRect[2]), frame_shape=(frame.shape[0], frame.shape[1]))
+    mouth_rect = make_rect_shape_square(mouth_rect)
+    expanded_mouth_rect = expand_rect(mouth_rect, scale=None, frame_shape=(h, w))
 
-    # Mouth
-    mouth = frame[expandedMouthRect[1]:expandedMouthRect[3],
-                  expandedMouthRect[0]:expandedMouthRect[2]]
+    mouth = frame[expanded_mouth_rect[1]:expanded_mouth_rect[3], expanded_mouth_rect[0]:expanded_mouth_rect[2]]
 
-    # # Resize to 120x120
-    # resizedMouthImage = np.round(resize(mouth, (120, 120), preserve_range=True)).astype('uint8')
-
-    # Return mouth
-    return mouth, face
-
+    return mouth, expanded_mouth_rect
 
 def audio_processing(wav_file, verbose):
     rate, sig = wavfile.read(wav_file)
@@ -140,15 +110,12 @@ def audio_processing(wav_file, verbose):
         print("Final mfcc_features shape:", mfcc_features.shape)
     return mfcc_features
 
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True)
+
+
 def video_processing5(video):
-    predictor_path = 'shape_predictor_68_face_landmarks.dat'
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor(predictor_path)
-
     cap = cv2.VideoCapture(video)
-
-    # Default face rect
-    face = dlib.rectangle(30, 30, 220, 220)
     lip_model_input = []
     frame_index = 0
 
@@ -156,44 +123,37 @@ def video_processing5(video):
         frames = []
 
         for i in range(5):
-            _, frame = cap.read()
+            ret, frame = cap.read()
             frame_index += 1
 
-            if frame is None:
+            if not ret:
                 break
 
-            mouth, _ = detect_mouth_in_frame(frame, detector, predictor, prevFace=face, verbose=False)
+            mouth, _ = detect_mouth_in_frame(frame)
 
-            # Skip frames where the mouth is not detected
             if mouth is None:
-                print("Warning: Mouth not detected in frame {}. Skipping.".format(frame_index))
+                print(f"Warning: Mouth not detected in frame {frame_index}. Skipping.")
                 continue
 
-            print("Processing frame:", frame_index)
-
-            # Convert mouth to grayscale
-            mouth_gray = cv2.cvtColor(mouth.copy(), cv2.COLOR_BGR2GRAY)
-
-            # Resize mouth to syncnet input shape
+            print(f"Processing frame: {frame_index}")
+            
+            mouth_gray = cv2.cvtColor(mouth, cv2.COLOR_BGR2GRAY)
             mouth_resized = cv2.resize(mouth_gray, (MOUTH_W, MOUTH_H))
-
-            # Subtract 110 from all mouth values
             mouth_processed = mouth_resized - 110.
-
-            # High pass filter
             gaussBlur = cv2.GaussianBlur(mouth_processed, (5, 5), cv2.BORDER_DEFAULT)
             high_pass = mouth_processed - gaussBlur
 
             frames.append(high_pass)
 
         if len(frames) == 5:
-            stacked = np.stack(frames, axis=-1)  # SyncNet requires (112,112,5)
+            stacked = np.stack(frames, axis=-1)
             lip_model_input.append(stacked)
         else:
             break
 
     cap.release()
     return np.array(lip_model_input)
+
 
 def euclidian_distance(data_1, data_2):
     return np.sqrt(np.sum(np.square(data_1 - data_2), axis=-1))
