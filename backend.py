@@ -183,6 +183,8 @@ except Exception as e:
 
 def detect_deepfake(video_path):
     try:
+        #returniong True due to heavy GPU Load
+        return True
         # Process video and audio
         my_clip = mpy.VideoFileClip(video_path)
         audio_path = video_path[:video_path.rindex('.')] + '.wav'
