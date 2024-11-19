@@ -1,3 +1,4 @@
+'''
 import os
 import numpy as np
 import moviepy.editor as mpy
@@ -180,10 +181,10 @@ try:
 except Exception as e:
     print(f"Model loading failed: {e}")
     raise
-
+'''
 def detect_deepfake(video_path):
     try:
-        #returniong True due to heavy GPU Load
+        #returniong True due to heavy GPU Load remove it uncomment for exact logic
         return True
         # Process video and audio
         my_clip = mpy.VideoFileClip(video_path)
