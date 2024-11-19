@@ -5,7 +5,7 @@ This project leverages state-of-the-art technologies to detect **deepfakes** by 
 
 ---
 ## Site Link: 
-- https://deepfakevideodetection-gvla.onrender.com [**Currently dowm due to lack of enough RAM**]
+- https://deepfakevideodetection-gvla.onrender.com [**Currently Backend dowm due to lack of enough RAM**]
 ---
 ## 🧑‍💻 Key Features  
 
